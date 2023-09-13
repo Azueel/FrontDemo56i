@@ -17,6 +17,8 @@ export const RegisterScreen = () => {
 			});
 
 			setError(resp.data.msg);
+
+			localStorage.setItem('token', resp.data.token);
 		} catch (error) {
 			console.log(error);
 		}

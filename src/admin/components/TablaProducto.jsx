@@ -4,6 +4,7 @@ import pruebaApi from '../../api/pruebaApi';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import Form from 'react-bootstrap/Form';
+import { useNavigate } from 'react-router';
 
 export const TablaProducto = () => {
 	const [cargarProductos, setCargarProductos] = useState([]);
@@ -12,8 +13,8 @@ export const TablaProducto = () => {
 	const [precio, setPrecio] = useState('');
 	const [descripcion, setDescripcion] = useState('');
 	const [productoEditarSeleccionado, setProductoEditarSeleccionado] = useState({});
-
 	const [showEditar, setShowEditar] = useState(false);
+	const navigate = useNavigate();
 
 	//Funcion para traer todos los productos de la base de datos
 	const cargarProduct = async () => {
@@ -22,7 +23,10 @@ export const TablaProducto = () => {
 
 			setCargarProductos(resp.data.productos);
 		} catch (error) {
-			console.log(error);
+			if (error.response.status === 401) {
+				localStorage.removeItem('token');
+				navigate('/login');
+			}
 		}
 	};
 
@@ -39,9 +43,16 @@ export const TablaProducto = () => {
 				descripcion,
 			});
 
-			console.log(resp);
+			//forma numero 1 haciendo la peticion al backend
+			//cargarProduct();
+
+			//forma numero 2 cargandolo desde el frontEnd
+			setCargarProductos([...cargarProductos, resp.data.producto]);
 		} catch (error) {
-			console.log(error);
+			if (error.response.status === 401) {
+				localStorage.removeItem('token');
+				navigate('/login');
+			}
 		}
 	};
 
@@ -68,9 +79,17 @@ export const TablaProducto = () => {
 	const eliminarProductoClick = async (id) => {
 		try {
 			const resp = await pruebaApi.delete(`/admin/eliminar/${id}`);
-			console.log(resp);
+
+			//forma numero 1
+			// cargarProduct();
+
+			//forma 2
+			setCargarProductos(cargarProductos.filter((producto) => producto._id !== id));
 		} catch (error) {
-			console.log(error);
+			if (error.response.status === 401) {
+				localStorage.removeItem('token');
+				navigate('/login');
+			}
 		}
 	};
 
@@ -82,10 +101,42 @@ export const TablaProducto = () => {
 		setProductoEditarSeleccionado(producto);
 	};
 
-	//funcion para editar Productos
+	const handleChangeEditar = (propiedad, valor) => {
+		setProductoEditarSeleccionado({
+			...productoEditarSeleccionado,
+			[propiedad]: valor,
+		});
+	};
+
 	const handleSubmitEditar = (e) => {
 		e.preventDefault();
-		console.log('producto Editar');
+
+		//validaciones
+		// if (productoEditarSeleccionado.precio < 0) {
+		// 	console.log('el precio debe ser mayor a 0');
+		// }
+
+		editarProductoDB(productoEditarSeleccionado);
+	};
+
+	const editarProductoDB = async ({ name, precio, descripcion, _id }) => {
+		try {
+			const resp = await pruebaApi.put('/admin/editar', {
+				name,
+				precio,
+				descripcion,
+				_id,
+			});
+
+			cargarProduct();
+
+			console.log(resp);
+		} catch (error) {
+			if (error.response.status === 401) {
+				localStorage.removeItem('token');
+				navigate('/login');
+			}
+		}
 	};
 
 	useEffect(() => {
@@ -147,13 +198,18 @@ export const TablaProducto = () => {
 					<Modal.Body>
 						<Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
 							<Form.Label>Nombre del producto</Form.Label>
-							<Form.Control type="text" value={productoEditarSeleccionado.name} />
+							<Form.Control
+								type="text"
+								value={productoEditarSeleccionado.name}
+								onChange={(e) => handleChangeEditar('name', e.target.value)}
+							/>
 						</Form.Group>
 						<Form.Group className="mb-3" controlId="exampleForm.ControlTextarea1">
 							<Form.Label>Precio</Form.Label>
 							<Form.Control
 								type="number"
 								value={productoEditarSeleccionado.precio}
+								onChange={(e) => handleChangeEditar('precio', e.target.value)}
 							/>
 						</Form.Group>
 
@@ -162,6 +218,7 @@ export const TablaProducto = () => {
 							<Form.Control
 								type="text"
 								value={productoEditarSeleccionado.descripcion}
+								onChange={(e) => handleChangeEditar('descripcion', e.target.value)}
 							/>
 						</Form.Group>
 					</Modal.Body>
@@ -180,7 +237,7 @@ export const TablaProducto = () => {
 				</Form>
 			</Modal>
 
-			{/* Tabla para cargar Usuarios */}
+			{/* Tabla para cargar Productos */}
 			<Table striped bordered hover variant="dark">
 				<thead>
 					<tr>
